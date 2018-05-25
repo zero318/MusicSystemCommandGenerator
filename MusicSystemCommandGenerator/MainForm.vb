@@ -14,6 +14,7 @@
     Public Shared NamespaceName As String
     Public Shared CharWidthList As New List(Of String())
     Public Shared PackName As String
+    Public Shared IsProtoPack As String = ""
     Public Sub GenerateCommandButton_Click(sender As Object, e As EventArgs) Handles GenerateCommandButton.Click
         BookCommandBox.Text = ""
         NamespaceName = NamespaceBox.Text
@@ -42,7 +43,7 @@
             ParentTracker = 0
             For j As Integer = 0 To SoundFileParts(i).Length - 1
                 TempString = "/" & ParentTracker & "/" & SoundFileParts(i)(j)
-                If Not DistinctStrings.ContainsKey(TempString) Then
+                If (Not DistinctStrings.ContainsKey(TempString)) AndAlso (Not TempString.EndsWith("intro.ogg")) Then
                     IndexTracker += 1
                     DistinctStrings.Add(TempString, IndexTracker)
                 End If
@@ -87,6 +88,7 @@
         SongIDs = GetDelimitedData(DelimitedDataPath, "SoundIDs.txt", True)
         SongLengths = GetDelimitedData(DelimitedDataPath, "SoundLengths.txt", True)
         CharTempList = GetDelimitedData(DelimitedDataPath, "CharWidths.txt", False)
+        IsProtoPack = (GetDelimitedData(DelimitedDataPath, "IsFinalPack.txt", True).ToArray)(0)(0)
         Dim CharTempArray As String() = {}
         Array.Resize(CharTempArray, CharTempList.ToArray.Length)
         Dim CharWidthArray As String() = {}
@@ -99,11 +101,11 @@
         CharWidthList.Add(CharWidthArray)
         Array.Resize(SongNameArray, SongIDs.ToArray.Length)
         Array.Resize(SongIDArray, SongIDs.ToArray.Length)
-        Array.Resize(SongLengthArray, SongLengths.ToArray.Length)
+        'Array.Resize(SongLengthArray, SongLengths.ToArray.Length)
         For i As Integer = 0 To SongIDs.ToArray.Length - 1
             SongNameArray(i) = SongIDs(i)(0)
             SongIDArray(i) = SongIDs(i)(1)
-            SongLengthArray(i) = CType(SongLengths(i)(1), Integer)
+            'SongLengthArray(i) = CType(SongLengths(i)(1), Integer)
         Next
         '========================================
         'This section parses the dictionary replacement array into an easier to use format.
@@ -331,7 +333,7 @@ Public Class WrittenBook
         Dim HasHoverEvent As Integer = 0
         Dim IsMultipart As Boolean = 0
         Dim TempText As String = ""
-        CommandString &= "/give @p minecraft:written_book{title:" & BookNameString & ",author:" & AuthorNameString & ",display:{Lore:[" & """Version: " & BookVersionNumber & """, ""Pack: " & PackVersionNumber & """]}" & ",pages:["
+        CommandString &= "/give @p minecraft:written_book{title:" & BookNameString & ",author:" & AuthorNameString & ",display:{Lore:[" & """Version: " & BookVersionNumber & """, ""Pack: " & PackVersionNumber & MainForm.IsProtoPack & """]}" & ",pages:["
         For i As Integer = 0 To Pages.Length - 1
             CommandString &= """[\""\"","
             IsMultipart = False
