@@ -82,7 +82,7 @@ Partial Class MainForm
         Me.ResourcePackName.Name = "ResourcePackName"
         Me.ResourcePackName.Size = New System.Drawing.Size(135, 20)
         Me.ResourcePackName.TabIndex = 3
-        Me.ResourcePackName.Text = "ZeroServerSoundPack11"
+        Me.ResourcePackName.Text = "ZeroServerSoundPack12"
         Me.ResourcePackName.WordWrap = False
         '
         'BookCommandBox

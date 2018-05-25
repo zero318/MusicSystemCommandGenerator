@@ -12,8 +12,12 @@
     Public Shared SongIDArray As String()
     Public Shared SongLengthArray As Integer()
     Public Shared NamespaceName As String
+    Public Shared CharWidthList As New List(Of String())
+    Public Shared PackName As String
     Public Sub GenerateCommandButton_Click(sender As Object, e As EventArgs) Handles GenerateCommandButton.Click
+        BookCommandBox.Text = ""
         NamespaceName = NamespaceBox.Text
+        PackName = ResourcePackName.Text
         '========================================
         'This section reads from the variables on the form and stores the sound files and folders to a variable.
         '========================================
@@ -79,8 +83,20 @@
         Dim DelimitedDataPath As String = ResourcePackLocation.Text & "\" & ResourcePackName.Text & "\assets\" & NamespaceBox.Text
         Dim SongIDs As New List(Of String())
         Dim SongLengths As New List(Of String())
-        SongIDs = GetDelimitedData(DelimitedDataPath, "SoundIDs.txt")
-        SongLengths = GetDelimitedData(DelimitedDataPath, "SoundLengths.txt")
+        Dim CharTempList As New List(Of String())
+        SongIDs = GetDelimitedData(DelimitedDataPath, "SoundIDs.txt", True)
+        SongLengths = GetDelimitedData(DelimitedDataPath, "SoundLengths.txt", True)
+        CharTempList = GetDelimitedData(DelimitedDataPath, "CharWidths.txt", False)
+        Dim CharTempArray As String() = {}
+        Array.Resize(CharTempArray, CharTempList.ToArray.Length)
+        Dim CharWidthArray As String() = {}
+        Array.Resize(CharWidthArray, CharTempList.ToArray.Length)
+        For i As Integer = 0 To CharTempList.ToArray.Length - 1
+            CharTempArray(i) = CharTempList(i).ToArray(0)
+            CharWidthArray(i) = CharTempList(i).ToArray(1)
+        Next
+        CharWidthList.Add(CharTempArray)
+        CharWidthList.Add(CharWidthArray)
         Array.Resize(SongNameArray, SongIDs.ToArray.Length)
         Array.Resize(SongIDArray, SongIDs.ToArray.Length)
         Array.Resize(SongLengthArray, SongLengths.ToArray.Length)
@@ -193,7 +209,7 @@
         BookCommandBox.Text = MusicControlBook.FinalizeBookCommand(BookName.Text, AuthorName.Text)
     End Sub
 
-    Private Function GetDelimitedData(ByVal FilePath As String, ByVal FileName As String) As List(Of String())
+    Private Function GetDelimitedData(ByVal FilePath As String, ByVal FileName As String, ByVal EnclosingQuotes As Boolean) As List(Of String())
         '========================================
         'I got this function off the internet to read data from some comma delimited text files.
         'Currently it doesn't do very much except retrieve the SoundIDs.
@@ -202,10 +218,17 @@
         Using MyReader As New FileIO.TextFieldParser(FilePath & "\" & FileName)
             MyReader.TextFieldType = FileIO.FieldType.Delimited
             MyReader.SetDelimiters(",")
+            MyReader.HasFieldsEnclosedInQuotes = EnclosingQuotes
             Dim currentRow As String()
             While Not MyReader.EndOfData
                 Try
                     currentRow = MyReader.ReadFields()
+                    If currentRow(0) = "" Then
+                        currentRow(0) = " "
+                    End If
+                    If currentRow(0) = "comma" Then
+                        currentRow(0) = ","
+                    End If
                     TempListOfArray.Add(currentRow)
                 Catch ex As FileIO.MalformedLineException
                     MsgBox("Line " & ex.Message & "is not valid and will be skipped.")
@@ -256,10 +279,47 @@ Public Class WrittenBook
         Array.Resize(Pages, Pages.Length + 1)
         Pages(Pages.Length - 1) = New Page(ParentPage, ParentID, Name)
     End Sub
+    Public Function GetPixelWidthOfString(ByVal InputString As String) As Integer
+        Dim PixelWidth As Integer = 0
+        Dim CharArray As Char() = InputString.ToCharArray()
+        For i As Integer = 0 To CharArray.Length - 1
+            PixelWidth += CType(MainForm.CharWidthList(1).ToArray(Array.IndexOf(MainForm.CharWidthList(0), CType(CharArray(i), String))), Integer)
+            If i <> CharArray.Length - 1 Then
+                PixelWidth += 1
+            End If
+        Next
+        Return PixelWidth
+    End Function
+    Public Function TrimStringToBookWidth(ByVal InputString As String) As String
+        Dim TrimmedString As String = ""
+        Dim PixelWidth As Integer = 0
+        Dim CharArray As Char() = InputString.ToCharArray()
+        For i As Integer = 0 To CharArray.Length - 1
+            PixelWidth += CType(MainForm.CharWidthList(1).ToArray(Array.IndexOf(MainForm.CharWidthList(0), CType(CharArray(i), String))), Integer)
+            If i <> CharArray.Length - 1 Then
+                PixelWidth += 1
+            End If
+            If PixelWidth <= 110 Then
+                TrimmedString &= CharArray(i)
+            End If
+        Next
+        TrimmedString &= "..."
+        Return TrimmedString
+    End Function
     Public Function FinalizeBookCommand(ByVal BookNameString As String, ByVal AuthorNameString As String) As String
         '========================================
         'This function reads the written book structure and generates the command to create the book.
         'This is a messy blob, but it's doing the job. I'm not sure how to optimize it since it's mostly just implementing the written book JSON format.
+        '========================================
+        Dim PackVersionNumber As String = ""
+        Dim TempCharArray As Char() = MainForm.PackName.ToCharArray()
+        For i As Integer = 0 To TempCharArray.Length - 1
+            If Char.IsDigit(TempCharArray(i)) Then
+                PackVersionNumber &= CType(TempCharArray(i), String)
+            End If
+        Next
+        '========================================
+        Dim BookVersionNumber As String = "2"
         '========================================
         Dim CommandString As String = ""
         Dim IsBold As Boolean = False
@@ -268,8 +328,10 @@ Public Class WrittenBook
         Dim IsStrikethrough As Boolean = False
         Dim IsObfuscated As Boolean = False
         Dim HasClickEvent As Integer = 0
+        Dim HasHoverEvent As Integer = 0
         Dim IsMultipart As Boolean = 0
-        CommandString &= "/give @p minecraft:written_book{title:" & BookNameString & ",author:" & AuthorNameString & ",pages:["
+        Dim TempText As String = ""
+        CommandString &= "/give @p minecraft:written_book{title:" & BookNameString & ",author:" & AuthorNameString & ",display:{Lore:[" & """Version: " & BookVersionNumber & """, ""Pack: " & PackVersionNumber & """]}" & ",pages:["
         For i As Integer = 0 To Pages.Length - 1
             CommandString &= """[\""\"","
             IsMultipart = False
@@ -279,17 +341,33 @@ Public Class WrittenBook
             For j As Integer = 0 To Pages(i).Lines.Length - 1
                 For k As Integer = 0 To Pages(i).Lines(j).Text_Components.Length - 1
                     With Pages(i).Lines(j).Text_Components(k)
+                        TempText = ""
                         If .RawText <> Nothing Then
                             If .RawText.EndsWith(".ogg") Then
-                                CommandString &= "{\""text\"":\""" & .RawText.Remove(.RawText.Length - 4)
-                            Else
-                                CommandString &= "{\""text\"":\""" & .RawText
+                                .RawText = .RawText.Remove(.RawText.Length - 4)
                             End If
+                            'If .RawText.EndsWith(".ogg") Then
+                            '    CommandString &= "{\""text\"":\""" & .RawText.Remove(.RawText.Length - 4)
+                            'Else
+                            '    CommandString &= "{\""text\"":\""" & .RawText
+                            'End If
+                            If GetPixelWidthOfString(.RawText) > 116 Then
+                                TempText = .RawText
+                                With .HoverEvent
+                                    .Type = JSON_Format2.HoverEvents.ShowText
+                                    .Value = TempText
+                                End With
+                                .RawText = TrimStringToBookWidth(.RawText)
+                            End If
+                            CommandString &= "{\""text\"":\""" & .RawText
                             If (j < 13) AndAlso (k = 0) Then
                                 CommandString &= "\\n"
                             End If
+                            'If (j < 13) AndAlso (k = (Pages(i).Lines(j).Text_Components.Length - 1)) Then
+                            '    CommandString &= "\\n"
+                            'End If
                             CommandString &= "\"""
-                            If (.TextColor <> Nothing) OrElse (.Format <> Nothing) OrElse (.ClickEvent.Type <> 0) Then
+                            If (.TextColor <> Nothing) OrElse (.Format <> Nothing) OrElse (.ClickEvent.Type <> 0) OrElse (.HoverEvent.Type <> 0) Then
                                 CommandString &= ","
                             End If
                         End If
@@ -332,7 +410,7 @@ Public Class WrittenBook
                                     CommandString &= "yellow"
                             End Select
                             CommandString &= "\"""
-                            If (.Format <> Nothing) OrElse (.ClickEvent.Type <> 0) Then
+                            If (.Format <> Nothing) OrElse (.ClickEvent.Type <> 0) OrElse (.HoverEvent.Type <> 0) Then
                                 CommandString &= ","
                             End If
                         End If
@@ -384,7 +462,7 @@ Public Class WrittenBook
                             If IsObfuscated = True Then
                                 CommandString &= "\""obfuscated\"":true"
                             End If
-                            If .ClickEvent.Type <> 0 Then
+                            If (.ClickEvent.Type <> 0) OrElse (.HoverEvent.Type <> 0) Then
                                 CommandString &= ","
                             End If
                         End If
@@ -413,6 +491,33 @@ Public Class WrittenBook
                                             CommandString &= "\""" & (.Value + 1) & "\"""
                                         Case = 2
                                             CommandString &= "\""/trigger MO set " & .Value & "\"""
+                                    End Select
+                                End If
+                                CommandString &= "}"
+                            End With
+                            If .HoverEvent.Type <> 0 Then
+                                CommandString &= ","
+                            End If
+                        End If
+                        If .HoverEvent.Type <> 0 Then
+                            With .HoverEvent
+                                HasHoverEvent = 0
+                                Select Case .Type
+                                    Case = JSON_Format2.HoverEvents.ShowText
+                                        HasHoverEvent = 1
+                                    Case = JSON_Format2.HoverEvents.None
+                                        HasHoverEvent = 0
+                                End Select
+                                If HasHoverEvent <> 0 Then
+                                    CommandString &= "\""hoverEvent\"":{\""action\"":\"""
+                                    Select Case HasHoverEvent
+                                        Case = 1
+                                            CommandString &= "show_text"
+                                    End Select
+                                    CommandString &= "\"",\""value\"":"
+                                    Select Case HasHoverEvent
+                                        Case = 1
+                                            CommandString &= "\""" & .Value & "\"""
                                     End Select
                                 End If
                                 CommandString &= "}"
@@ -584,8 +689,8 @@ Public Class Page
                                         .Value = PageNumber - 1
                                     End With
                                 Else
-                                    .RawText = "     "
-                                    .TextColor = JSON_Format2.TextColors.None
+                                    .RawText = "<Back"
+                                    .TextColor = JSON_Format2.TextColors.Black
                                     .Format = JSON_Format2.Formatting.None
                                 End If
                             Case 1
@@ -602,14 +707,55 @@ Public Class Page
                                         .Value = PageNumber + 1
                                     End With
                                 Else
-                                    .RawText = "     "
-                                    .TextColor = JSON_Format2.TextColors.None
+                                    .RawText = "Next>"
+                                    .TextColor = JSON_Format2.TextColors.Black
                                     .Format = JSON_Format2.Formatting.None
                                 End If
                         End Select
                     End With
                 Next
                 FilledLines += 1
+                'Array.Resize(Lines(0).Text_Components, 4) 'Create text components for the multipage buttons.
+                'For j As Integer = 1 To 3 'For each multipage button text component...
+                '    Lines(0).Text_Components(j) = New JSON_Format2()
+                '    With Lines(0).Text_Components(j)
+                '        Select Case j
+                '            Case 1
+                '                If MultipartPageNumber <> 0 Then
+                '                    .RawText = "   <"
+                '                    .TextColor = JSON_Format2.TextColors.Dark_Blue
+                '                    .Format = JSON_Format2.Formatting.None
+                '                    With .ClickEvent
+                '                        .Type = JSON_Format2.ClickEvents.ChangePage
+                '                        .Value = PageNumber - 1
+                '                    End With
+                '                Else
+                '                    .RawText = "    "
+                '                    .TextColor = JSON_Format2.TextColors.None
+                '                    .Format = JSON_Format2.Formatting.None
+                '                End If
+                '            Case 2
+                '                .RawText = " " & MultipartPageNumber & "/" & MultipartPageTotal & " "
+                '                .TextColor = JSON_Format2.TextColors.Black
+                '                .Format = JSON_Format2.Formatting.None
+                '            Case 3
+                '                If MultipartPageNumber <> MultipartPageTotal Then
+                '                    .RawText = ">"
+                '                    .TextColor = JSON_Format2.TextColors.Dark_Blue
+                '                    .Format = JSON_Format2.Formatting.None
+                '                    With .ClickEvent
+                '                        .Type = JSON_Format2.ClickEvents.ChangePage
+                '                        .Value = PageNumber + 1
+                '                    End With
+                '                Else
+                '                    .RawText = " "
+                '                    .TextColor = JSON_Format2.TextColors.None
+                '                    .Format = JSON_Format2.Formatting.None
+                '                End If
+                '        End Select
+                '    End With
+                'Next
+                'FilledLines += 1
             End If
             If ((ContentIDs.ToArray.Length - 1) + MultipartInteger) <= 12 Then 'If all of the hierarchy IDs of this page will fit on the available lines...
                 With Lines(i + 1).Text_Components(0) 'With the next line of the page...
@@ -727,6 +873,7 @@ Public Class JSON_Format2
     Public TextColor As TextColors
     Public Format As Formatting
     Public ClickEvent As ClickEventData
+    Public HoverEvent As HoverEventData
     Public Sub New()
         RawText = ""
         TextColor = New TextColors
@@ -808,5 +955,18 @@ Public Class JSON_Format2
         None = 0
         ChangePage = 1
         RunCommand = 2
+    End Enum
+    Public Structure HoverEventData
+        '========================================
+        '========================================
+        Public Type As HoverEvents
+        Public Value As String
+        Public Sub New(ByVal InputType As HoverEvents, ByVal InputValue As String)
+            Value = InputValue
+        End Sub
+    End Structure
+    Public Enum HoverEvents
+        None = 0
+        ShowText = 1
     End Enum
 End Class
