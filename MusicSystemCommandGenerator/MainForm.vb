@@ -4,7 +4,7 @@
     Public Shared HierarchyIDs As String()()
     Public Shared HierarchyParentIDs() As String
     Public Shared IndexTracker2 As Integer
-    Public Shared MusicControlBook As New WrittenBook
+    Public Shared MusicControlBook As WrittenBook
     Public Shared AddedMultipartPages As Integer
     Public Shared TempMultipartPages As Integer
     Public Shared AddedPages As Integer
@@ -12,10 +12,34 @@
     Public Shared SongIDArray As String()
     Public Shared SongLengthArray As Integer()
     Public Shared NamespaceName As String
-    Public Shared CharWidthList As New List(Of String())
+    Public Shared CharWidthList As List(Of String())
     Public Shared PackName As String
     Public Shared IsProtoPack As String = ""
+    Private Sub BookCommandBox_KeyPress(ByVal sender As Object, ByVal e As KeyPressEventArgs) Handles BookCommandBox.KeyPress
+        If e.KeyChar = Convert.ToChar(1) Then
+            DirectCast(sender, TextBox).SelectAll()
+            e.Handled = True
+        End If
+    End Sub
     Public Sub GenerateCommandButton_Click(sender As Object, e As EventArgs) Handles GenerateCommandButton.Click
+        TempArray1 = Nothing
+        HierarchyStrings = Nothing
+        HierarchyIDs = Nothing
+        HierarchyParentIDs = Nothing
+        IndexTracker2 = Nothing
+        MusicControlBook = Nothing
+        MusicControlBook = New WrittenBook
+        AddedMultipartPages = Nothing
+        TempMultipartPages = Nothing
+        AddedPages = Nothing
+        SongNameArray = Nothing
+        SongIDArray = Nothing
+        SongLengthArray = Nothing
+        NamespaceName = Nothing
+        CharWidthList = Nothing
+        CharWidthList = New List(Of String())
+        PackName = Nothing
+        IsProtoPack = Nothing
         BookCommandBox.Text = ""
         NamespaceName = NamespaceBox.Text
         PackName = ResourcePackName.Text
@@ -101,11 +125,11 @@
         CharWidthList.Add(CharWidthArray)
         Array.Resize(SongNameArray, SongIDs.ToArray.Length)
         Array.Resize(SongIDArray, SongIDs.ToArray.Length)
-        'Array.Resize(SongLengthArray, SongLengths.ToArray.Length)
+        Array.Resize(SongLengthArray, SongLengths.ToArray.Length)
         For i As Integer = 0 To SongIDs.ToArray.Length - 1
             SongNameArray(i) = SongIDs(i)(0)
             SongIDArray(i) = SongIDs(i)(1)
-            'SongLengthArray(i) = CType(SongLengths(i)(1), Integer)
+            SongLengthArray(i) = CType(SongLengths(i)(1), Integer)
         Next
         '========================================
         'This section parses the dictionary replacement array into an easier to use format.
@@ -209,6 +233,7 @@
         'It compiles all of the book contents into a JSON command and displays it on the form.
         '========================================
         BookCommandBox.Text = MusicControlBook.FinalizeBookCommand(BookName.Text, AuthorName.Text)
+        BookCommandBox.Focus()
     End Sub
 
     Private Function GetDelimitedData(ByVal FilePath As String, ByVal FileName As String, ByVal EnclosingQuotes As Boolean) As List(Of String())
@@ -586,6 +611,11 @@ Public Class Page
     'This variable keeps track of how many lines need to be filled with newline characters when the JSON is actually generated. That way the multipage controls are always at the bottom of the page while keeping the command string as small as possible.
     Public FilledLines As Integer
     Public Sub New()
+        Multipart = 0
+        MultipartPageNumber = 0
+        MultipartPageTotal = 0
+        MultipartInteger = 0
+        NextPageNumber = 0
         '========================================
         'This constructor is only used as part of the generation of the main page.
         '========================================
