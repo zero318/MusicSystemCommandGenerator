@@ -10,7 +10,7 @@
     Public Shared AddedPages As Integer
     Public Shared SongNameArray As String()
     Public Shared SongIDArray As String()
-    Public Shared SongLengthArray As Integer()
+    'Public Shared SongLengthArray As Integer()
     Public Shared NamespaceName As String
     Public Shared CharWidthList As List(Of String())
     Public Shared PackName As String
@@ -34,7 +34,7 @@
         AddedPages = Nothing
         SongNameArray = Nothing
         SongIDArray = Nothing
-        SongLengthArray = Nothing
+        'SongLengthArray = Nothing
         NamespaceName = Nothing
         CharWidthList = Nothing
         CharWidthList = New List(Of String())
@@ -110,7 +110,7 @@
         Dim SongLengths As New List(Of String())
         Dim CharTempList As New List(Of String())
         SongIDs = GetDelimitedData(DelimitedDataPath, "SoundIDs.txt", True)
-        SongLengths = GetDelimitedData(DelimitedDataPath, "SoundLengths.txt", True)
+        'SongLengths = GetDelimitedData(DelimitedDataPath, "SoundLengths.txt", True)
         CharTempList = GetDelimitedData(DelimitedDataPath, "CharWidths.txt", False)
         IsProtoPack = (GetDelimitedData(DelimitedDataPath, "IsFinalPack.txt", True).ToArray)(0)(0)
         Dim CharTempArray As String() = {}
@@ -125,11 +125,11 @@
         CharWidthList.Add(CharWidthArray)
         Array.Resize(SongNameArray, SongIDs.ToArray.Length)
         Array.Resize(SongIDArray, SongIDs.ToArray.Length)
-        Array.Resize(SongLengthArray, SongLengths.ToArray.Length)
+        'Array.Resize(SongLengthArray, SongLengths.ToArray.Length)
         For i As Integer = 0 To SongIDs.ToArray.Length - 1
             SongNameArray(i) = SongIDs(i)(0)
             SongIDArray(i) = SongIDs(i)(1)
-            SongLengthArray(i) = CType(SongLengths(i)(1), Integer)
+            'SongLengthArray(i) = CType(SongLengths(i)(1), Integer)
         Next
         '========================================
         'This section parses the dictionary replacement array into an easier to use format.
@@ -161,14 +161,35 @@
             .Format = JSON_Format2.Formatting.None
         End With
         MusicControlBook.Pages(0).FilledLines += 1
-        With MusicControlBook.Pages(0).Lines(2).Text_Components(0)
-            .RawText = "Clear Override"
-            .TextColor = JSON_Format2.TextColors.Red
-            .Format = JSON_Format2.Formatting.Underlined
-            With .ClickEvent
-                .Type = JSON_Format2.ClickEvents.RunCommand
-                .Value = CType(0, String)
-            End With
+        With MusicControlBook.Pages(0).Lines(2)
+            Array.Resize(.Text_Components, 3)
+            For i As Integer = 0 To 2
+                .Text_Components(i) = New JSON_Format2()
+                With .Text_Components(i)
+                    Select Case i
+                        Case 0
+                            .RawText = "Clear Override"
+                            .TextColor = JSON_Format2.TextColors.Red
+                            .Format = JSON_Format2.Formatting.Underlined
+                            With .ClickEvent
+                                .Type = JSON_Format2.ClickEvents.RunCommand
+                                .Value = CType(0, String)
+                            End With
+                        Case 1
+                            .RawText = "   "
+                            .TextColor = JSON_Format2.TextColors.Black
+                            .Format = JSON_Format2.Formatting.None
+                        Case 2
+                            .RawText = "Silent"
+                            .TextColor = JSON_Format2.TextColors.Dark_Red
+                            .Format = JSON_Format2.Formatting.Underlined
+                            With .ClickEvent
+                                .Type = JSON_Format2.ClickEvents.RunCommand
+                                .Value = CType(41, String)
+                            End With
+                    End Select
+                End With
+            Next
         End With
         '========================================
         'This section starts the main loop by filling in the folders of the first page.
@@ -200,11 +221,18 @@
             'It iterates through the folders of the first page and generates new pages for any subfolders.
             'If the contents of a folder cannot fit on a single page, it also generates more pages for that folder until the contents will fit.
             '========================================
+            Dim TestTemp As Integer = 0
             For i As Integer = 0 To .Pages(0).Lines.Length - 5 'For each folder on the main page...
                 .AddPage(.Pages(0).PageNumber, .Pages(0).ContentIDs(i), HierarchyStrings(0)(i))
                 AddedPages = 0
                 For Each ContentID As Integer In .Pages(i + 1 + IndexTracker2).ContentIDs 'For all of the IDs on this page...
                     If Array.IndexOf(HierarchyParentIDs, "/" & ContentID) <> -1 Then 'If this ID is a folder...
+                        If Page.Multipart = True Then
+                            AddedPages += 1
+                            .AddPage(.Pages(i + 1 + IndexTracker2).ParentPage, .Pages(i + 1 + IndexTracker2).ParentID, "")
+                            Page.Multipart = False
+                            AddedMultipartPages += 1
+                        End If
                         AddedPages += 1
                         .AddPage(.Pages(i + 1 + IndexTracker2).PageNumber, .Pages(i + 1 + IndexTracker2).ContentIDs(Array.IndexOf(.Pages(i + 1 + IndexTracker2).ContentIDs.ToArray, ContentID)), "")
                         If Page.Multipart = True Then 'If this page can't hold all of the contents...
@@ -358,7 +386,7 @@ Public Class WrittenBook
         Dim HasHoverEvent As Integer = 0
         Dim IsMultipart As Boolean = 0
         Dim TempText As String = ""
-        CommandString &= "/give @p minecraft:written_book{title:" & BookNameString & ",author:" & AuthorNameString & ",display:{Lore:[" & """Version: " & BookVersionNumber & """, ""Pack: " & PackVersionNumber & MainForm.IsProtoPack & """]}" & ",pages:["
+        CommandString &= "give @s minecraft:written_book{title:" & BookNameString & ",author:" & AuthorNameString & ",display:{Lore:[" & """Version: " & BookVersionNumber & """, ""Pack: " & PackVersionNumber & MainForm.IsProtoPack & """]}" & ",pages:["
         For i As Integer = 0 To Pages.Length - 1
             CommandString &= """[\""\"","
             IsMultipart = False
@@ -373,11 +401,6 @@ Public Class WrittenBook
                             If .RawText.EndsWith(".ogg") Then
                                 .RawText = .RawText.Remove(.RawText.Length - 4)
                             End If
-                            'If .RawText.EndsWith(".ogg") Then
-                            '    CommandString &= "{\""text\"":\""" & .RawText.Remove(.RawText.Length - 4)
-                            'Else
-                            '    CommandString &= "{\""text\"":\""" & .RawText
-                            'End If
                             If GetPixelWidthOfString(.RawText) > 116 Then
                                 TempText = .RawText
                                 With .HoverEvent
@@ -387,18 +410,15 @@ Public Class WrittenBook
                                 .RawText = TrimStringToBookWidth(.RawText)
                             End If
                             CommandString &= "{\""text\"":\""" & .RawText
-                            If (j < 13) AndAlso (k = 0) Then
+                            If (j < 13) AndAlso (k = (Pages(i).Lines(j).Text_Components.Length - 1)) Then
                                 CommandString &= "\\n"
                             End If
-                            'If (j < 13) AndAlso (k = (Pages(i).Lines(j).Text_Components.Length - 1)) Then
-                            '    CommandString &= "\\n"
-                            'End If
                             CommandString &= "\"""
                             If (.TextColor <> Nothing) OrElse (.Format <> Nothing) OrElse (.ClickEvent.Type <> 0) OrElse (.HoverEvent.Type <> 0) Then
                                 CommandString &= ","
                             End If
                         End If
-                        If .TextColor <> Nothing Then
+                            If .TextColor <> Nothing Then
                             CommandString &= "\""color\"":\"""
                             Select Case .TextColor
                                 Case = JSON_Format2.TextColors.Blue
@@ -610,6 +630,7 @@ Public Class Page
     Public Shared MultipartInteger As Integer
     'This variable keeps track of how many lines need to be filled with newline characters when the JSON is actually generated. That way the multipage controls are always at the bottom of the page while keeping the command string as small as possible.
     Public FilledLines As Integer
+    Public Shared er As Exception = Nothing
     Public Sub New()
         Multipart = 0
         MultipartPageNumber = 0
@@ -658,9 +679,13 @@ Public Class Page
                 MultipartPageTotal = (ContentIDs.ToArray.Length) \ 12
             End If
         End If
+        Dim NewParent As Integer = 0
         With MainForm.MusicControlBook
             If ParentPage <> 0 Then 'If this folder is not directly a subfolder of the main page...
                 If Multipart = False Then '...and if this folder does not have multiple pages...
+                    If Array.IndexOf(.Pages(ParentPage).ContentIDs.ToArray, ParentID) + 1 > 12 Then
+                        ParentPage += 1
+                    End If
                     With .Pages(ParentPage).Lines(Array.IndexOf(.Pages(ParentPage).ContentIDs.ToArray, ParentID) + 1).Text_Components(0).ClickEvent
                         .Type = JSON_Format2.ClickEvents.ChangePage
                         .Value = PageNumber '...set the link of the parent ID line to this page.
@@ -691,7 +716,7 @@ Public Class Page
         End With
         With Lines(0).Text_Components(0)
             .RawText = MainForm.MusicControlBook.Pages(ParentPage).PageName & "/.."
-            .TextColor = JSON_Format2.TextColors.Dark_Blue
+            .TextColor = JSON_Format2.TextColors.Dark_Purple
             .Format = JSON_Format2.Formatting.None
             With .ClickEvent
                 .Type = JSON_Format2.ClickEvents.ChangePage
@@ -714,7 +739,7 @@ Public Class Page
                             Case 0
                                 If MultipartPageNumber <> 0 Then
                                     .RawText = "<Back"
-                                    .TextColor = JSON_Format2.TextColors.Dark_Blue
+                                    .TextColor = JSON_Format2.TextColors.Dark_Purple
                                     .Format = JSON_Format2.Formatting.None
                                     With .ClickEvent
                                         .Type = JSON_Format2.ClickEvents.ChangePage
@@ -722,7 +747,7 @@ Public Class Page
                                     End With
                                 Else
                                     .RawText = "<Back"
-                                    .TextColor = JSON_Format2.TextColors.Black
+                                    .TextColor = JSON_Format2.TextColors.Dark_Gray
                                     .Format = JSON_Format2.Formatting.None
                                 End If
                             Case 1
@@ -732,7 +757,7 @@ Public Class Page
                             Case 2
                                 If MultipartPageNumber <> MultipartPageTotal Then
                                     .RawText = "Next>"
-                                    .TextColor = JSON_Format2.TextColors.Dark_Blue
+                                    .TextColor = JSON_Format2.TextColors.Dark_Purple
                                     .Format = JSON_Format2.Formatting.None
                                     With .ClickEvent
                                         .Type = JSON_Format2.ClickEvents.ChangePage
@@ -740,54 +765,13 @@ Public Class Page
                                     End With
                                 Else
                                     .RawText = "Next>"
-                                    .TextColor = JSON_Format2.TextColors.Black
+                                    .TextColor = JSON_Format2.TextColors.Dark_Gray
                                     .Format = JSON_Format2.Formatting.None
                                 End If
                         End Select
                     End With
                 Next
                 FilledLines += 1
-                'Array.Resize(Lines(0).Text_Components, 4) 'Create text components for the multipage buttons.
-                'For j As Integer = 1 To 3 'For each multipage button text component...
-                '    Lines(0).Text_Components(j) = New JSON_Format2()
-                '    With Lines(0).Text_Components(j)
-                '        Select Case j
-                '            Case 1
-                '                If MultipartPageNumber <> 0 Then
-                '                    .RawText = "   <"
-                '                    .TextColor = JSON_Format2.TextColors.Dark_Blue
-                '                    .Format = JSON_Format2.Formatting.None
-                '                    With .ClickEvent
-                '                        .Type = JSON_Format2.ClickEvents.ChangePage
-                '                        .Value = PageNumber - 1
-                '                    End With
-                '                Else
-                '                    .RawText = "    "
-                '                    .TextColor = JSON_Format2.TextColors.None
-                '                    .Format = JSON_Format2.Formatting.None
-                '                End If
-                '            Case 2
-                '                .RawText = " " & MultipartPageNumber & "/" & MultipartPageTotal & " "
-                '                .TextColor = JSON_Format2.TextColors.Black
-                '                .Format = JSON_Format2.Formatting.None
-                '            Case 3
-                '                If MultipartPageNumber <> MultipartPageTotal Then
-                '                    .RawText = ">"
-                '                    .TextColor = JSON_Format2.TextColors.Dark_Blue
-                '                    .Format = JSON_Format2.Formatting.None
-                '                    With .ClickEvent
-                '                        .Type = JSON_Format2.ClickEvents.ChangePage
-                '                        .Value = PageNumber + 1
-                '                    End With
-                '                Else
-                '                    .RawText = " "
-                '                    .TextColor = JSON_Format2.TextColors.None
-                '                    .Format = JSON_Format2.Formatting.None
-                '                End If
-                '        End Select
-                '    End With
-                'Next
-                'FilledLines += 1
             End If
             If ((ContentIDs.ToArray.Length - 1) + MultipartInteger) <= 12 Then 'If all of the hierarchy IDs of this page will fit on the available lines...
                 With Lines(i + 1).Text_Components(0) 'With the next line of the page...
@@ -805,18 +789,21 @@ Public Class Page
                             .Type = JSON_Format2.ClickEvents.RunCommand
                             ParentPageLoop = ParentPage
                             TempString2 = "." & PageName.Substring(1) & "." & TempString
-                            If TempString2.StartsWith("._") = True Then 'If the name of this folder contains an underscore to process correctly...
-                                TempString2 = "." & TempString2.Substring(2) '...don't display the underscore.
-                            End If
                             While ParentPageLoop <> 0 'Build the string of parent pages until the main page is reached...
                                 TempString2 = "." & MainForm.MusicControlBook.Pages(ParentPageLoop).PageName.Substring(1) & TempString2
-                                If TempString2.StartsWith("._") = True Then 'If the name of this parent folder contains an underscore to process correctly...
-                                    TempString2 = "." & TempString2.Substring(2) '...don't display the underscore.
-                                End If
                                 ParentPageLoop = MainForm.MusicControlBook.Pages(ParentPageLoop).ParentPage
                             End While
                             TempString2 = MainForm.NamespaceName & ":" & TempString2.Substring(1) 'Create a string matching Minecraft's version of my sound file names.
-                            .Value = MainForm.SongIDArray(Array.IndexOf(MainForm.SongNameArray, TempString2)) 'Retrieve the numeric sound ID corresponding to this sound name.
+                            Try
+                                .Value = MainForm.SongIDArray(Array.IndexOf(MainForm.SongNameArray, TempString2)) 'Retrieve the numeric sound ID corresponding to this sound name.
+                            Catch ex As Exception
+                                er = ex
+                                MessageBox.Show("Typo!")
+                            Finally
+                                If Not er Is Nothing Then
+                                    .Value = MainForm.SongIDArray(Array.IndexOf(MainForm.SongNameArray, TempString2)) 'Go ahead and crash anyway
+                                End If
+                            End Try
                         End With
                     End If
                 End With
@@ -834,17 +821,20 @@ Public Class Page
                                 .Type = JSON_Format2.ClickEvents.RunCommand
                                 ParentPageLoop = ParentPage
                                 TempString2 = "." & PageName.Substring(1) & "." & TempString
-                                If TempString2.StartsWith("._") = True Then 'If the name of this folder contains an underscore to process correctly...
-                                    TempString2 = "." & TempString2.Substring(2) '...don't display the underscore.
-                                End If
                                 While ParentPageLoop <> 0 'Build the string of parent pages until the main page is reached...
                                     TempString2 = "." & MainForm.MusicControlBook.Pages(ParentPageLoop).PageName.Substring(1) & TempString2
-                                    If TempString2.StartsWith("._") = True Then 'If the name of this parent folder contains an underscore to process correctly...
-                                        TempString2 = "." & TempString2.Substring(2) '...don't display the underscore.
-                                    End If
                                     ParentPageLoop = MainForm.MusicControlBook.Pages(ParentPageLoop).ParentPage
                                 End While
-                                TempString2 = MainForm.NamespaceName & ":" & TempString2.Substring(1) 'Create a string matching Minecraft's version of my sound file names.
+                                Try
+                                    TempString2 = MainForm.NamespaceName & ":" & TempString2.Substring(1) 'Create a string matching Minecraft's version of my sound file names.
+                                Catch ex As Exception
+                                    er = ex
+                                    MessageBox.Show("Typo!")
+                                Finally
+                                    If Not er Is Nothing Then
+                                        TempString2 = MainForm.NamespaceName & ":" & TempString2.Substring(1) 'Create a string matching Minecraft's version of my sound file names.
+                                    End If
+                                End Try
                                 .Value = MainForm.SongIDArray(Array.IndexOf(MainForm.SongNameArray, TempString2)) 'Retrieve the numeric sound ID corresponding to this sound name.
                             End With
                         End If
@@ -867,18 +857,6 @@ Public Class Page
             MultipartInteger = 1 'Set the offset to 1.
         End If
     End Sub
-    'Public Sub New(ByVal LinesArray As JSON_Text())
-    '    PageNumber = NextPageNumber
-    '    NextPageNumber += 1
-    '    Lines = LinesArray
-    '    ContentIDs = New List(Of Integer)
-    'End Sub
-    'Public Sub New(ByVal LinesArray As JSON_Text(), ByVal Number As Integer, ByVal Parent As Integer)
-    '    Lines = LinesArray
-    '    PageNumber = Number
-    '    ParentPage = Parent
-    '    ContentIDs = New List(Of Integer)
-    'End Sub
 End Class
 
 
